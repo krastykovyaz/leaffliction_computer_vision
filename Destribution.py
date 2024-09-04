@@ -12,17 +12,15 @@ def analyze_and_plot(directory):
     
     labels = list(image_count.keys())
     sizes = list(image_count.values())
-
+    
     plt.figure(figsize=(12, 6))
     plt.subplot(1, 2, 1)
     plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
-    plt.title(f'{directory.split("/")[-1]} class distribution')
+    plt.title(f'{directory.split("/")[-1].lower()} class distribution', x=0.0, y=1.05)
 
     plt.subplot(1, 2, 2)
-    plt.bar(labels, sizes, color=['blue', 'orange', 'green', 'purple'])
-    plt.title(f'{directory.split("/")[-1]} class distribution')
-    plt.xlabel('Class')
-    plt.ylabel('Number of images')
+    plt.bar(labels, sizes, color=['blue', 'red', 'green', 'purple'])
+
 
     plt.show()
 
