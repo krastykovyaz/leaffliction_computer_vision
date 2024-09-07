@@ -1,1 +1,4 @@
 matplotlib
+opencv-python
+torch
+torchvision

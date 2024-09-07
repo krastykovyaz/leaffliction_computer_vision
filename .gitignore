@@ -3,3 +3,5 @@
 venv
 *.zip
 images/
+output/
+.ipynb_checkpoints/
