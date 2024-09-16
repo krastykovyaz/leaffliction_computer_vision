@@ -1,6 +1,7 @@
 from PIL import Image, ImageOps, ImageEnhance, ImageFilter
 import os
 
+
 def augment_image(image_path):
     img = Image.open(image_path)
     img_name, img_extension = os.path.splitext(image_path)
@@ -23,11 +24,19 @@ def augment_image(image_path):
 
     # Crop the image (10% from each side)
     width, height = img.size
-    img_crop = img.crop((int(0.1 * width), int(0.1 * height), int(0.9 * width), int(0.9 * height)))
+    img_crop = img.crop((int(0.1 * width),
+                         int(0.1 * height),
+                         int(0.9 * width),
+                         int(0.9 * height)))
     img_crop.save(f"{img_name}_Crop{img_extension}")
 
     # Distort the image
-    img_distort = img.transform(img.size, Image.QUAD, (0, 0, width, 0, width - 30, height, 30, height))
+    img_distort = img.transform(img.size,
+                                Image.QUAD,
+                                (0, 0, width, 0,
+                                    width - 30,
+                                    height, 30,
+                                    height))
     img_distort.save(f"{img_name}_Distortion{img_extension}")
 
     # Blur the image
@@ -52,12 +61,8 @@ def augment_image(image_path):
 
 if __name__ == "__main__":
     import sys
-    # if len(sys.argv) != 2:
-    #     print("Usage: python Augmentation.py <directory>")
-    #     sys.exit(1)
-    # python3 Destribution.py /Users/aleksandr/Desktop/Leaffliction/images/Apple
-    # directory = sys.argv[1]
-    directory = "/Users/aleksandr/Desktop/Leaffliction/images/Apple/apple_black_rot/image (1).JPG"
-    
-    # Apply augmentation
+    if len(sys.argv) != 2:
+        print("Usage: python Augmentation.py <directory>")
+        sys.exit(1)
+    directory = sys.argv[1]
     augment_image(directory)
