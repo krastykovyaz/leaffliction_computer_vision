@@ -2,3 +2,6 @@ matplotlib
 opencv-python
 torch
 torchvision
+pilkit
+plantcv
+numpy
