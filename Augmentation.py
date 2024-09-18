@@ -33,10 +33,10 @@ def augment_image(image_path, number):
             img_skew.save(skew_path)
             logger.info(f"Saved skewed image: {skew_path}")
         if number >= 4:
-        # Shear the image
+            # Shear the image
             img_shear = img.transform(img.size,
                                       Image.AFFINE,
-                                      (1, 0.3, 0, 0.3, 1, 0))
+                                      (1, 0.4, 0, 0.4, 1, 0))
             shear_path = f"{img_name}_Shear{img_extension}"
             img_shear.save(shear_path)
             logger.info(f"Saved sheared image: {shear_path}")
@@ -95,7 +95,7 @@ def augment_image(image_path, number):
     except Exception as e:
         logger.error(f"Error processing image {image_path}: {e}")
     finally:
-        logger.info('Image augmentation completed.')
+        logger.info(f'Augmentation of image {image_path} completed.')
 
 
 if __name__ == "__main__":
