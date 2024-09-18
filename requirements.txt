@@ -2,5 +2,11 @@ matplotlib
 opencv-python
 torch
 torchvision
+<<<<<<< HEAD
 flake8
 pillow
+=======
+pilkit
+plantcv
+numpy
+>>>>>>> ee5b2c2305fa222a083381dc9c635c013338c374
