@@ -2,3 +2,5 @@ matplotlib
 opencv-python
 torch
 torchvision
+flake8
+pillow
