@@ -6,6 +6,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import random_split, DataLoader
 import logging
+import matplotlib.pyplot as plt
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -54,6 +55,26 @@ def load_data(data_dir):
                 training and {val_size} validation samples.")
     return train_dataset, val_dataset
 
+def plot_training(train_losses, val_accuracies):
+    epochs = range(1, len(train_losses) + 1)
+
+    plt.figure(figsize=(10, 5))
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, train_losses, label='Training Loss')
+    plt.title('Training Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, val_accuracies, label='Validation Accuracy')
+    plt.title('Validation Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
 
 def train_model(data_dir, output_dir):
     logger.info("Starting model training...")
@@ -70,7 +91,9 @@ def train_model(data_dir, output_dir):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
-    for epoch in range(100):
+    train_losses = []
+    val_accuracies = []
+    for epoch in range(25):
         model.train()
         running_loss = 0.0
         for batch_x, batch_y in train_loader:
@@ -84,6 +107,7 @@ def train_model(data_dir, output_dir):
             running_loss += loss.item()
 
         epoch_loss = running_loss / len(train_loader)
+        train_losses.append(epoch_loss)
         logger.info(f"Epoch {epoch + 1}, Loss: {epoch_loss:.4f}")
 
         model.eval()
@@ -96,18 +120,21 @@ def train_model(data_dir, output_dir):
                 _, predicted = torch.max(preds, 1)
                 total += batch_y.size(0)
                 correct += (predicted == batch_y).sum().item()
+                
 
         accuracy = correct / total
+        val_accuracies.append(accuracy)
         logger.info(f"Validation Accuracy: {accuracy * 100:.2f}%")
 
-        if prev_loss - loss < stop or loss > prev_loss:
-            logger.info(f"Stopping early at epoch \
-                        {epoch + 1} due to minimal loss improvement.")
-            break
+        # if prev_loss - loss < stop or loss > prev_loss:
+        #     logger.info(f"Stopping early at epoch \
+        #                 {epoch + 1} due to minimal loss improvement.")
+            # break
 
         prev_model = model
         prev_loss = loss
-
+        
+    plot_training(train_losses, val_accuracies)
     model_path = os.path.join(output_dir, 'leaf_disease_model.pth')
     torch.save(prev_model.state_dict(), model_path)
     logger.info(f"Model weights saved to {model_path}")
