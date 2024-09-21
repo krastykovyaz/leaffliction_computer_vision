@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import torch
 from PIL import Image
 from torchvision import transforms
@@ -5,6 +7,7 @@ from train import LeafDiseaseModel
 import sys
 import logging
 import os
+import json
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -71,11 +74,12 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:  # Image path passed as argument
         image_path = sys.argv[1]
         model_path = 'output/leaf_disease_model.pth'
-
+        with open('map_classes.json', 'r') as jf:
+            map_json = json.load(jf)
         logger.info(f"Starting inference on {image_path}")
         model = load_model(model_path, device)
         predicted_class = predict(image_path, model, device)
-        print(f'Predicted class: {predicted_class}')
+        print(f'Predicted class: {map_json[str(predicted_class)]}')
     else:
         logger.error('No image path provided as an argument.')
         print('Usage: python script.py <path_to_image>')

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from PIL import Image, ImageOps, ImageEnhance, ImageFilter
 import os
 import logging
@@ -63,34 +65,6 @@ def augment_image(image_path, number):
             img_distort.save(distort_path)
             logger.info(f"Saved distorted image: {distort_path}")
 
-        if number >= 7:
-            # Blur the image
-            img_blur = img.filter(ImageFilter.GaussianBlur(5))
-            blur_path = f"{img_name}_Blur{img_extension}"
-            img_blur.save(blur_path)
-            logger.info(f"Saved blurred image: {blur_path}")
-
-        if number >= 8:
-            # Adjust contrast
-            enhancer = ImageEnhance.Contrast(img)
-            img_contrast = enhancer.enhance(2)
-            contrast_path = f"{img_name}_Contrast{img_extension}"
-            img_contrast.save(contrast_path)
-            logger.info(f"Saved contrast-enhanced image: {contrast_path}")
-
-        if number >= 9:
-            # Scaling (resize image)
-            img_scaling = img.resize((int(width * 1.2), int(height * 1.2)))
-            scaling_path = f"{img_name}_Scaling{img_extension}"
-            img_scaling.save(scaling_path)
-            logger.info(f"Saved scaled image: {scaling_path}")
-        if number >= 10:
-            # Adjust Illumination (Brightness)
-            enhancer = ImageEnhance.Brightness(img)
-            img_illumination = enhancer.enhance(1.5)
-            illumination_path = f"{img_name}_Illumination{img_extension}"
-            img_illumination.save(illumination_path)
-            logger.info(f"Saved illumination-adjusted image: {illumination_path}")
 
     except Exception as e:
         logger.error(f"Error processing image {image_path}: {e}")

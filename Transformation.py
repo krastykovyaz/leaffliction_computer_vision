@@ -1,4 +1,5 @@
-<<<<<<< HEAD
+#!/usr/bin/env python3
+
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
@@ -67,7 +68,7 @@ def plot_color_histogram(image_path):
 # Example usage
 # plot_color_histogram("images/Apple/apple_healthy/image (1).JPG")
 
-=======
+
 import numpy as np
 from plantcv import plantcv as pcv
 from pilkit.lib import Image
@@ -213,4 +214,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     transform_image(image_path)
->>>>>>> ee5b2c2305fa222a083381dc9c635c013338c374
+

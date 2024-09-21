@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import sys
 import torch
@@ -78,19 +80,13 @@ def plot_training(train_losses, val_accuracies):
 
 def train_model(data_dir, output_dir):
     logger.info("Starting model training...")
-
-    stop = 0.001
-    prev_loss = 1
     train_dataset, val_dataset = load_data(data_dir)
     train_loader = DataLoader(
         train_dataset, batch_size=8, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=8, drop_last=True)
-
-    prev_model = None
     model = LeafDiseaseModel().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
-
     train_losses = []
     val_accuracies = []
     for epoch in range(25):
@@ -125,14 +121,8 @@ def train_model(data_dir, output_dir):
         accuracy = correct / total
         val_accuracies.append(accuracy)
         logger.info(f"Validation Accuracy: {accuracy * 100:.2f}%")
-
-        # if prev_loss - loss < stop or loss > prev_loss:
-        #     logger.info(f"Stopping early at epoch \
-        #                 {epoch + 1} due to minimal loss improvement.")
-            # break
-
         prev_model = model
-        prev_loss = loss
+
         
     plot_training(train_losses, val_accuracies)
     model_path = os.path.join(output_dir, 'leaf_disease_model.pth')
