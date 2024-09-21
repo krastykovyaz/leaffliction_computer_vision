@@ -27,6 +27,10 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python Distribution.py <directory>")
         sys.exit(1)
+    if os.path.isdir(sys.argv[1]) == False or \
+        os.path.exists(os.path.join(os.getcwd(), sys.argv[1])) == False:
+        print("Usage: python Distribution.py with correct <directory>")
+        sys.exit(1)
     # python3 Destribution.py /Users/aleksandr/Desktop/Leaffliction/images/Apple
     directory = sys.argv[1]
     analyze_and_plot(directory)
