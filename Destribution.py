@@ -17,7 +17,10 @@ def analyze_and_plot(directory):
         if files and root != directory:
             class_name = os.path.basename(root)
             image_count[class_name] = len(files)
-            colors.append(random_color_generator())
+            i = random_color_generator()
+            while (i in colors):
+                i = random_color_generator()
+            colors.append(i)
     labels = list(image_count.keys())
     sizes = list(image_count.values())
     plt.figure(figsize=(12, 6))
@@ -30,10 +33,10 @@ def analyze_and_plot(directory):
     # plt.legend(labels, loc=4)
     plt.title(f'{directory.split("/")[-1].lower()} class distribution',
               x=0.0, y=1.05, loc="left", fontsize=20)
-    fig = plt.subplot(1, 2, 2)
+    plt.subplot(1, 2, 2)
     plt.bar(labels, sizes, color=colors, edgecolor='black')
-    # rotate x labels
-    fig.set_xticklabels(fig.get_xticklabels(), rotation=90)
+    # rotate x ticks (x labels)
+    plt.xticks(rotation=90)
     # adjust labels
     plt.tight_layout()
     plt.subplots_adjust(top=0.85)
@@ -45,6 +48,5 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python Distribution.py <directory>")
         sys.exit(1)
-    # python3 Destribution.py /Users/aleksandr/Desktop/Leaffliction/images/Apple
     directory = sys.argv[1]
     analyze_and_plot(directory)
