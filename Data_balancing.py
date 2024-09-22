@@ -125,9 +125,6 @@ def data_balancing(directory):
         hash_all += hash_one_folder
         if current_len > max_count:
             max_count = current_len
-            print("l hash = ", l_hash)
-            print("current_len = ", current_len)
-            print("max = ", max_count)
     print(len(hash_all))
     print("Total for the entire dataset:")
     print(f"There're  {len(hash_all)} unique files.")
@@ -138,7 +135,6 @@ def data_balancing(directory):
         im_count = count_jpg_files_pathlib(mini_folder)
         logger.info(f'Files in {mini_folder} directory: {im_count}')
         how_many_add = max_count - im_count
-        print("HHHHHHHow", how_many_add, "im_count ", im_count, "max_count ", max_count)
         if how_many_add > 0:
             print(f"You need to add: {how_many_add} files in this directory")
             # print(f"Need to add {how_many_add} in folder{mini_folder}")
