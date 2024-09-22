@@ -14,6 +14,7 @@ def augment_image(image_path, number):
         logger.info(f"Opening image: {image_path}")
         img = Image.open(image_path)
         img_name, img_extension = os.path.splitext(image_path)
+        
         if number >= 1:
             # Blur the image
             img_blur = img.filter(ImageFilter.GaussianBlur(5))
@@ -30,12 +31,13 @@ def augment_image(image_path, number):
             logger.info(f"Saved contrast-enhanced image: {contrast_path}")
 
         if number >= 3:
-            width, height = img.size
             # Scaling (resize image)
+            width, height = img.size
             img_scaling = img.resize((int(width * 1.2), int(height * 1.2)))
             scaling_path = f"{img_name}_Scaling{img_extension}"
             img_scaling.save(scaling_path)
             logger.info(f"Saved scaled image: {scaling_path}")
+
         if number >= 4:
             # Adjust Illumination (Brightness)
             enhancer = ImageEnhance.Brightness(img)
@@ -43,6 +45,24 @@ def augment_image(image_path, number):
             illumination_path = f"{img_name}_Illumination{img_extension}"
             img_illumination.save(illumination_path)
             logger.info(f"Saved illumination-adjusted image: {illumination_path}")
+
+        if number >= 5:
+            # Invert colors
+            img_invert = ImageOps.invert(img.convert('RGB'))
+            invert_path = f"{img_name}_Invert{img_extension}"
+            img_invert.save(invert_path)
+            logger.info(f"Saved inverted color image: {invert_path}")
+
+        if number >= 6:
+            # Crop the image (10% from each side)
+            width, height = img.size
+            img_crop = img.crop((int(0.1 * width),
+                                 int(0.1 * height),
+                                 int(0.9 * width),
+                                 int(0.9 * height)))
+            crop_path = f"{img_name}_Crop{img_extension}"
+            img_crop.save(crop_path)
+            logger.info(f"Saved cropped image: {crop_path}")
 
     except Exception as e:
         logger.error(f"Error processing image {image_path}: {e}")
