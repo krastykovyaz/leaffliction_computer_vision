@@ -23,7 +23,7 @@ class LeafDiseaseModel(nn.Module):
         self.conv1 = nn.Conv2d(3, 32, 3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
         self.fc1 = nn.Linear(64 * 32 * 32, 512)
-        self.fc2 = nn.Linear(512, 4)
+        self.fc2 = nn.Linear(512, 8)
 
     def forward(self, x):
         x = torch.relu(self.conv1(x))
