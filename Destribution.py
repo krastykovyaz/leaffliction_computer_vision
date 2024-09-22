@@ -14,18 +14,12 @@ def analyze_and_plot(directory):
     image_count = Counter()
     colors = []
     for root, dirs, files in os.walk(directory):
-        if files:
+        if files and root != directory:
             class_name = os.path.basename(root)
-            print(class_name)
             image_count[class_name] = len(files)
-            print(image_count[class_name])
             colors.append(random_color_generator())
-            # color += 1
-    # print(colors)
     labels = list(image_count.keys())
-    # print("labels", labels)
     sizes = list(image_count.values())
-    # print("sizes", sizes)
     plt.figure(figsize=(12, 6))
     plt.subplot(1, 2, 1)
     plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140,
