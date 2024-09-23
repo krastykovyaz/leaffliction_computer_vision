@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import numpy as np
 from plantcv import plantcv as pcv
 from pilkit.lib import Image
