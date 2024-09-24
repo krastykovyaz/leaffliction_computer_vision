@@ -6,6 +6,8 @@ from pathlib import Path
 from Augmentation import augment_image
 import logging
 import shutil
+import numpy as np
+import pandas as pd
 # from PIL import Image
 
 
@@ -26,14 +28,14 @@ def hashing_images(img_path):
 
 
 def hashing_directory(directory):
-    my_list = []
+    path_and_hash = []
     for f in os.scandir(directory):
         # check if it is a jpg file
         if os.path.abspath(f).lower().endswith(".jpg"):
             hash_im = hashing_images(f)
-            my_list.append((os.path.abspath(f), hash_im))
+            path_and_hash.append((os.path.abspath(f), hash_im))
     # return pair(path_of_im, hash_of_im)
-    return my_list
+    return path_and_hash
 
 
 def count_jpg_files_pathlib(directory):
@@ -48,21 +50,20 @@ def count_jpg_files_pathlib(directory):
 def removing_non_unique_elem(directory):
     counts = count_jpg_files_pathlib(directory)
     my_list = hashing_directory(directory)
+
     temp = []
-    unique_hash = []
+    path_hash = []
     for elem in my_list:
-        # print("elem", elem[1])
         if elem[1] in temp:
-            # print(elem[1])
             logger.info(f"Removing image: {elem[0]}")
             os.remove(elem[0])
-            # exit()
         else:
             temp.append(elem[1])
-            unique_hash.append(elem)
+            path_hash.append(elem)
+
     counts = count_jpg_files_pathlib(directory)
     print(f"  number of unique files: {counts}")
-    return unique_hash
+    return path_hash
 
 
 # balance your data set
@@ -76,7 +77,6 @@ def adding_new_file(how_many_add, directory):
     if how_many_add < 6:
         quot = 0
         rem = how_many_add
-    print("________QUOT", quot, "REM", rem)
     for img in images:
         if img.lower().endswith(".jpg"):
             img_path = directory + '/' + img
@@ -87,7 +87,6 @@ def adding_new_file(how_many_add, directory):
             if quot:
                 augment_image(os.path.abspath(img_path), 6)
                 quot -= 1
-                print(f"quot {quot}")
 
 
 def data_balancing(directory):
@@ -102,37 +101,52 @@ def data_balancing(directory):
     shutil.copytree(src_dir, dest_dir)
 
     path = Path(dest_dir)
-
-    # No_of_files = len(os.listdir(directory))
     logger.info(f"Analysing images in our data folder: "
                 f"{os.listdir(dest_dir)}")
     m = len(list(path.rglob("*")))
     logger.info(f"There are : {m} files and folders")
 
     subfolders = [f.path for f in os.scandir(dest_dir) if f.is_dir()]
-    print("folders: ", len(subfolders))
-    max_count = 0
-    hash_all = []
-    all_count = 0
+    print("folders: ", len(subfolders), '\n')
+
+    path_hash_all = []
     for mini_folder in subfolders:
-        logger.info(f'Counting file in {mini_folder} directory')
+        logger.info(f'Check if ther are any duplicated images '
+                    f'in {mini_folder} directory')
         input("By continuing you agree to delete duplicate files"
-              " if they exist. Enter anything.")
-        hash_one_folder = removing_non_unique_elem(mini_folder)
-        # print(hash_unique)
+              " in this directory if they exist. Enter anything.")
+        path_hash_folder = removing_non_unique_elem(mini_folder)
+        path_hash_all += path_hash_folder
+        print('\n')
+
+    logger.info("let's see if there are any similar pictures between classes")
+    only_hash = []
+    input("By continuing you agree to delete all similar images "
+          "between classesif they exist. Enter anything.")
+    for p in path_hash_all:
+        only_hash.append(p[1])
+    indices = np.where(pd.Series(only_hash).duplicated(keep=False))[0]
+
+    for elem in indices:
+        logger.info(f"Removing image: {path_hash_all[elem][0]}")
+        os.remove(path_hash_all[elem][0])
+
+    max_count = 0
+    all_img = 0
+    for mini_folder in subfolders:
         current_len = count_jpg_files_pathlib(mini_folder)
-        # print(hash_unique)
-        l_hash = len(hash_one_folder)
-        all_count += l_hash
-        hash_all += hash_one_folder
+        all_img += current_len
         if current_len > max_count:
             max_count = current_len
-    print(len(hash_all))
+        logger.info(f'Counting file in {mini_folder} '
+                    f'directory: {current_len} images')
+    print('\n')
     print("Total for the entire dataset:")
-    print(f"There're  {len(hash_all)} unique files.")
+    print(f"There're  {all_img} unique files.")
     print(f"maximum of files in folder: {max_count}")
-
+    print('\n')
     logger.info("Let's balance our data if necessary")
+    input("Please enter anything to continue.")
     for mini_folder in subfolders:
         im_count = count_jpg_files_pathlib(mini_folder)
         logger.info(f'Files in {mini_folder} directory: {im_count}')
@@ -159,4 +173,3 @@ if __name__ == "__main__":
 
 # исправить рандомность.
 # если больше чем н на 6 умноженное
-# проверка на похожие среди всего датасета
