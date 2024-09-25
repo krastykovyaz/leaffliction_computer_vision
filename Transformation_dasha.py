@@ -5,12 +5,13 @@ from pilkit.lib import Image
 import logging
 from argparse import ArgumentParser
 from argparse import ArgumentTypeError
-import matplotlib
-import pandas as pd
-import cv2
-import numpy as np
 from matplotlib import pyplot as plt
+import matplotlib
+import cv2
 import os
+from pathlib import Path
+# import pandas as pd
+# import numpy as np
 # from pilkit.processors import TrimBorderColor
 # from PIL import Image, ImageOps, ImageEnhance, ImageFilter
 
@@ -62,39 +63,6 @@ def display_image_transformations(image_path):
 
     plt.show()
 
-def by_chanels(chans, colors, labels):
-    for (chan, color) in zip(chans, colors):
-        hist = cv2.calcHist([chan], [0], None, [256], [0, 256])
-        plt.plot(hist, color=color, label=labels)
-        plt.xlim([0, 256])
-
-def plot_color_histogram(image_path):
-    image = cv2.imread(image_path)
-
-    # Transform to numpy array
-    hsv_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    lab_img = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-
-    chans = cv2.split(image)
-    chans_hsv = cv2.split(hsv_img)
-    chans_lab = cv2.split(lab_img)
-
-    plt.figure()
-    plt.title("Color Histogram")
-    plt.xlabel("Bins")
-    plt.ylabel("# of Pixels")
-
-    by_chanels(chans[0], "b", "blue")
-    by_chanels(chans[1], "g", "green")
-    by_chanels(chans[2], "r", "red")
-    by_chanels(chans_hsv[0], "m", "hue")
-    by_chanels(chans_hsv[1], "c", "saturation")
-    by_chanels(chans_hsv[2], "y", "value")
-    by_chanels(chans_lab[0], "b", "lightness")
-    by_chanels(chans_lab[1], "c", "green_red")
-    by_chanels(chans_lab[2], "y", "blue_yellow")
-    plt.legend()
-    plt.show()
 
 # Example usage
 # plot_color_histogram("images/Apple/apple_healthy/image (1).JPG")
@@ -105,17 +73,32 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 
-def dir_path(path):
+def dir_src_path(path):
     if os.path.isdir(path):
         return path
     else:
         raise ArgumentTypeError(f"readable_dir:{path} is not a valid path")
 
 
+def dir_dst_path(path):
+    if os.path.isdir(path):
+        return path
+    if not os.path.exists(path):
+        try:
+            os.makedirs(path)
+        except Exception as e:
+            logger.error(f"Error making directory {path}: {e}")
+
+
 def file_img(img):
     # hsv_img = matplotlib.colors.rgb_to_hsv(np_img)
-    # check if it is a jpg file
+    # check if it is a jpg file ???????????????????????
     if os.path.abspath(img).lower().endswith(".jpg"):
+        try:
+            Image.open(img)
+        except IOError:
+            raise ArgumentTypeError(f"{img} is not a valid image")
+        # filename not an image file
         return img
     else:
         raise ArgumentTypeError(f"{img} is not a valid image")
@@ -124,22 +107,21 @@ def file_img(img):
 parser = ArgumentParser(description=__doc__)
 #
 
-parser.add_argument("img_src", help="Path to the input image", type=file_img)
+parser.add_argument("img_src", help="Path to the input image",
+                    type=file_img, nargs='?')
 
 parser.add_argument(
     "-src",
     # dest="first_string",
     help="the source directory of images",
-    type=dir_path
-    # required=True,
+    type=dir_src_path
 )
 
 parser.add_argument(
     "-dst",
     # dest="second_string",
     help="destinagtion directory for transformed images",
-    type=dir_path
-    # required=True,
+    type=dir_dst_path
 )
 
 parser.add_argument("-gaussian", help="apply gaussian blur",
@@ -168,256 +150,308 @@ parser.add_argument("-histogram", help="apply color histogram",
 #       "-i: {}".format(first_arg, second_arg, third_arg))
 #
 
-
 # plant cv Documentation
 # https://github.com/danforthcenter/plantcv/tree/main/docs
-
-
 # Set global debug behavior to None (default), "print" (to file),
 # or "plot" (Jupyter Notebooks or X11)
 pcv.params.debug = "None"
 
-def pcv_histogram(image_path, np_img, my_mask):
-    # 7 Histogram Analyze Color DONE
+
+class Transform_image:
+    def __init__(self, image_path, display=True, dir_dst=None,
+                 gaussian=False, mask=False, roi=False,
+                 analyze=False, pseudolandmarks=False, histogram=False):
+        # # I can read image also like this:
+        # self.path = image_path
+        self.img = Image.open(image_path)
+        # # Transform to numpy array
+        # self.np_img = np.asarray(self.img)
+
+        # But this is less code of reading image
+        self.np_img, self.path, path_name = pcv.readimage(filename=image_path,
+                                                          mode="native")
+        print("Path", self.path)
+        self.name = Path(path_name).stem
+        self.tr_mask = None
+
+        self.dir_dst = dir_dst
+        self.display = display
+
+        self.gaussian_f = gaussian
+        self.mask_f = mask
+        self.roi_f = roi
+        self.analyze_f = analyze
+        self.pseudolandmarks_f = pseudolandmarks
+        self.histogram_f = histogram
+
+        logger.info(f"Let's transform image: {self.path}")
+        self.transformation()
+        print('\n')
+
+    # Histogram Analyze Color using plantcv
+    def one_channel(self, chans, colors, labels):
+        for (chan, color) in zip(chans, colors):
+            hist = cv2.calcHist([chan], [0], None, [256], [0, 256])
+            plt.plot(hist, color=color, label=labels)
+            plt.xlim([0, 256])
+
+    def plot_color_histogram(self):
+        image = cv2.imread(self.path)
+
+        # Transform to numpy array
+        hsv_img = cv2.cvtColor(self.np_img, cv2.COLOR_BGR2HSV)
+        lab_img = cv2.cvtColor(self.np_img, cv2.COLOR_BGR2LAB)
+        chans = cv2.split(self.np_img)
+        chans_hsv = cv2.split(hsv_img)
+        chans_lab = cv2.split(lab_img)
+        plt.figure()
+        plt.title("Color Histogram")
+        plt.xlabel("Bins")
+        plt.ylabel("# of Pixels")
+        self.one_channel(chans[0], "b", "blue")
+        self.one_channel(chans[1], "g", "green")
+        self.one_channel(chans[2], "r", "red")
+        self.one_channel(chans_hsv[0], "m", "hue")
+        self.one_channel(chans_hsv[1], "c", "saturation")
+        self.one_channel(chans_hsv[2], "y", "value")
+        self.one_channel(chans_lab[0], "b", "lightness")
+        self.one_channel(chans_lab[1], "c", "green_red")
+        self.one_channel(chans_lab[2], "y", "blue_yellow")
+        plt.legend()
+        if self.display:
+            plt.show()
+        else:
+            histogram_name_1 = self.dir_dst + \
+                               '/' + self.name + "_7_histogram.png"
+            plt.savefig(histogram_name_1)
+            logger.info(f"saving image {histogram_name_1}")
+
     # Examine signal distribution within an image
-    # prints out an image histogram of signal within image
-    logger.info("saving histogram")
-    hist_figure, hist_data = pcv.visualize.histogram(img=np_img,
-                                                     title="histogram",
-                                                     mask=my_mask,
-                                                     hist_data=True)
-    image = cv2.imread(image_path)
-    # hsv_img = matplotlib.colors.rgb_to_hsv(np_img)
-    hsv_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    hist_figure_hsv, hist_data_hsv = pcv.visualize.histogram(img=hsv_img, mask=my_mask, hist_data=True)
-    pcv.print_image(hist_figure, filename = "histogram.png")
-    pass
+    def pcv_histogram(self):
+        # prints out an image histogram of signal within image
+        hist_figure, hist_data = pcv.visualize.histogram(img=self.np_img,
+                                                         title="histogram",
+                                                         mask=self.tr_mask,
+                                                         hist_data=True)
+        # image = cv2.imread(self.path)
+        hsv_img = matplotlib.colors.rgb_to_hsv(self.np_img)
+        # hsv_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        hist_figure_hsv, hist_data_hsv = \
+            pcv.visualize.histogram(img=hsv_img, mask=self.tr_mask,
+                                    hist_data=True)
+        if self.histogram_f and self.dir_dst:
+            histogram_name = self.dir_dst + \
+                             '/' + self.name + "_6_histogram_rgb.png"
+            pcv.print_image(hist_figure, filename=histogram_name)
+            logger.info(f"saving image {histogram_name}")
 
-def pcv_roi(np_img, bsa_fill1, name):
-    new_name = name + "roi.png"
-    # ####Region of Interest
-    # 4 Roi objects (Region of interest to mask)
-    # ROI filter allows the user to define if objects partially
-    # inside ROI are included or if objects are cut to ROI.
-    # Make a grid of ROIs done
-    center_x = int(np_img.shape[0] / 2)
-    print(center_x)
-    center_y = int(np_img.shape[1] / 2)
-    print(center_y)
-    radius = int((center_x + center_y) / 2)
-    print(radius)
-    roi = pcv.roi.circle(img=np_img, x=center_x, y=center_y, r=75)
-    print("roi", type(roi))
-    print("my roi", roi.__str__())
+    # Roi objects (Region of interest to mask)
+    def pcv_roi(self):
+        self.center_x = int(self.np_img.shape[0] / 2)
+        self.center_y = int(self.np_img.shape[1] / 2)
+        self.radius = int((self.center_x + self.center_y) / 2)
+        roi = pcv.roi.circle(img=self.np_img, x=self.center_x,
+                             y=self.center_y, r=75)
+        # Make a new filtered mask that only keeps the plant in your ROI
+        # and not objects outside of the ROI
+        # We have set to partial here so that if a leaf extends outside of
+        # your ROI it will still be selected.
+        filtered_mask = pcv.roi.filter(mask=self.tr_mask,
+                                       roi=roi, roi_type='partial')
+        if self.roi_f and self.dir_dst:
+            roi_name = self.dir_dst + '/' + self.name + "_3_roi.png"
+            pcv.print_image(filtered_mask, roi_name)
+            logger.info(f"saving image {roi_name}")
 
-    # Make a new filtered mask that only keeps the plant in your ROI and not objects outside of the ROI
-    # We have set to partial here so that if a leaf extends outside of your ROI it will still be selected. Switch to "cutto" if you have other plants that are getting selected on accident
+        self.tr_mask = filtered_mask
 
-    # Inputs:
-    #    mask            = the clean mask you made above
-    #    roi            = the region of interest you specified above
-    #    roi_type       = 'partial' (default, for partially inside the ROI), 'cutto', or
-    #                     'largest' (keep only largest contour)
-    filtered_mask = pcv.roi.filter(mask=bsa_fill1,
-                                   roi=roi, roi_type='partial')
-    pcv.print_image(filtered_mask, new_name)
-    return center_x, center_y, radius
-
-def transform_image_1(image_path):
-
-    # I can read image also like this:
-    # Read image
-    img = Image.open(image_path)
-
-    # Transform to numpy array
-    np_img = np.asarray(img)
-
-    print(image_path)
-    plot_color_histogram(image_path)
-    pcv_histogram(image_path, np_img, None)
-    pass
-
-def pcv_analyze_object(img, mask, name):
     # Characterize object shapes
-    newname = name + "_analyze_object.png"
-    shape_img = pcv.analyze.size(img=img,
-                                   labeled_mask=mask,
-                                   n_labels=1)
-    logger.info("saving analyze object")
-    pcv.print_image(shape_img, newname)
-    return shape_img
-def pcv_pseudolanmarks(np_img, mask, name):
-    device = 1
-    # Identify a set of land mark points
-    # Results in set of point values that may indicate tip points
-    top, bottom, center_v = pcv.homology.x_axis_pseudolandmarks(img=np_img, mask=mask)
-    print("np", type(np_img))
-    print("top", type(top))
-    print("bottom", type(bottom))
-    print("center", type(center_v))
-    pseudo_img = pcv.apply_mask(img=np_img,
+    def pcv_analyze_object(self):
+        shape_img = pcv.analyze.size(img=self.np_img,
+                                     labeled_mask=self.tr_mask,
+                                     n_labels=1)
+        if self.analyze_f and self.dir_dst:
+            shape_name = self.dir_dst + \
+                         '/' + self.name + "_4_analyze_object.png"
+            pcv.print_image(shape_img, shape_name)
+            logger.info(f"saving image {shape_name}")
+        return shape_img
+
+    # 6 Identify a set of land mark points
+    def pcv_pseudolanmarks(self):
+        # device = 1
+        # Results in set of point values that may indicate tip points
+        top, bottom, center_v = \
+            pcv.homology.x_axis_pseudolandmarks(img=self.np_img,
+                                                mask=self.tr_mask)
+        pseudo_img = pcv.apply_mask(img=self.np_img,
                                     mask=top,
                                     mask_color='black')
-    return top, bottom, center_v
+        return top, bottom, center_v
+
+    def color_space_image(self):
+        # Update params related to plotting so we can see better
+        pcv.params.text_size = 5
+        pcv.params.text_thickness = 5
+        # Look at the colorspace - which of these looks the best for masking?
+        # Which channel makes the plant look most distinct from the background?
+        colorspace_img = pcv.visualize.colorspaces(rgb_img=self.np_img,
+                                                   original_img=False)
+        if self.dir_dst:
+            color_sp_name = \
+                self.dir_dst + '/' + self.name + "_0_colorspace.png"
+            pcv.print_image(colorspace_img, color_sp_name)
+            logger.info(f"saving image {color_sp_name}")
+
+    def transformation(self):
+        self.color_space_image()
+        # # Optionally, set a sample label name
+        # pcv.params.sample_label = "plant"
+        if self.dir_dst:
+            orig_name = self.dir_dst + '/' + self.name + "_0_original.png"
+            pcv.print_image(self.np_img, orig_name)
+            logger.info(f"saving image {orig_name}")
+
+        # Thresholding method - image converted from RGB to gray.
+        gray_img = pcv.rgb2gray(rgb_img=self.np_img)
+        # Create binary image from a gray image based on threshold values,
+        threshold_light = pcv.threshold.binary(gray_img=gray_img,
+                                               threshold=115,
+                                               object_type='dark')
+        # Noise Reduction
+        # delete small parts of pixels
+        bsa_fill1 = pcv.fill(bin_img=threshold_light,
+                             size=25)
+        self.tr_mask = bsa_fill1
+        # bsa_fill1 = pcv.dilate(gray_img=bsa_fill1, ksize=1.5, i = 2)
+        # closing small pixels
+        filled_mask1 = pcv.closing(gray_img=self.tr_mask)
+        # pcv.print_image(filled_mask1, "1_binary.png")
+
+        # 2 Gaussian blur
+        # Apply gaussian blur to a binary image
+        gaussian_img = pcv.gaussian_blur(img=self.tr_mask,
+                                         ksize=(3, 3),
+                                         sigma_x=0,
+                                         sigma_y=None)
+        # img_flip.save(f"{img_name}_Flip{img_extension}")
+        if self.gaussian_f and self.dir_dst:
+            gauss_name = self.dir_dst + '/' + self.name + "_1_gaussian.png"
+            pcv.print_image(gaussian_img, gauss_name)
+            logger.info(f"saving image {gauss_name}")
+
+        # #3 Mask - Apply binary 'white' mask over an image.
+        masked_img = pcv.apply_mask(img=self.np_img,
+                                    mask=self.tr_mask,
+                                    mask_color='white')
+        if self.mask_f and self.dir_dst:
+            masked_name = self.dir_dst + '/' + self.name + "_2_masked.png"
+            pcv.print_image(masked_img, masked_name)
+            logger.info(f"saving image {masked_name}")
+
+        self.pcv_roi()
+
+        if self.analyze_f and self.dir_dst:
+            shape_img = self.pcv_analyze_object()
+
+        if self.pseudolandmarks_f or self.display:
+            top, bottom, center_v = self.pcv_pseudolanmarks()
+
+        if self.histogram_f and self.dir_dst:
+            self.pcv_histogram()
+            self.plot_color_histogram()
+
+        if self.display:
+            # Display results
+            plt.figure(figsize=(10, 8))
+            # plt.title(figure_title, y=1.08)
+
+            plt.subplot(3, 2, 1)
+            plt.imshow(cv2.cvtColor(self.np_img, cv2.COLOR_BGR2RGB))
+            plt.title("1: Original")
+
+            plt.subplot(3, 2, 2)
+            plt.imshow(cv2.cvtColor(gaussian_img, cv2.COLOR_BGR2RGB))
+            plt.title("2: Gaussian Blur")
+
+            plt.subplot(3, 2, 3)
+            plt.imshow(cv2.cvtColor(masked_img, cv2.COLOR_BGR2RGB))
+            plt.title("3: Analyzed Object")
+
+            fig = plt.subplot(3, 2, 4)
+            plt.imshow(cv2.cvtColor(self.np_img, cv2.COLOR_BGR2RGB))
+            circle = plt.Circle((self.center_x, self.center_y),
+                                self.radius*0.8, alpha=1,
+                                fill=None, linewidth=5,
+                                facecolor=None, linestyle='-',
+                                edgecolor="blue")
+            plt.scatter(self.center_x, self.center_y, 10, facecolors='none',
+                        edgecolors='blue')
+            fig.add_patch(circle)
+            plt.title("4: ROI objects")
+
+            plt.subplot(3, 2, 5)
+            plt.imshow(cv2.cvtColor(shape_img, cv2.COLOR_BGR2RGB))
+            plt.title("5: Analyze object")
+
+            plt.subplot(3, 2, 6)
+            plt.imshow(cv2.cvtColor(self.np_img, cv2.COLOR_BGR2RGB))
+            for t in top:
+                plt.scatter(t[0][0], t[0, 1], s=20, c="blue")
+            for bt in bottom:
+                plt.scatter(bt[0][0], bt[0, 1], s=20, c="magenta")
+            for cn in center_v:
+                plt.scatter(cn[0][0], cn[0, 1], s=20, c="red")
+            plt.title("6: Pseudolandmarks")
+
+            # add overall title and adjust it
+            # so that it doesn't overlap with subplot titles
+            plt.suptitle(self.path)
+            # plt.subplots_adjust(top=0.85)
+
+            plt.tight_layout()
+            # display subplots
+            plt.show()
+
+            # if histogram:
+            #     pass
 
 
-def transform_image(image_path, gaussian=False, mask=False, roi=False, analyze=False, pseudolandmarks=False, histogram=False):
-    print(image_path)
-    # I can read image also like this:
-    img = Image.open(image_path)
-    # Transform to numpy array
-    np_img = np.asarray(img)
-
-    # #But this is less code of reading image
-    # np_img, path, img_filename = pcv.readimage(filename=image_path, mode="native")
-
-    # Update params related to plotting so we can see better
-    pcv.params.text_size = 5
-    pcv.params.text_thickness = 5
-    # Look at the colorspace - which of these looks the best for masking?
-    # Which channel makes the plant look most distinct from the background?
-    colorspace_img = pcv.visualize.colorspaces(rgb_img=np_img, original_img=False)
-    pcv.print_image(colorspace_img, "colorspace_image.png")
-
-
-    # # Optionally, set a sample label name
-    # pcv.params.sample_label = "plant"
-
-    # 1 Original
-    # pcv.print_image(np_img, "0_original.png")
-
-    # ###1. Methods of Isolating Target Objects
-    # ####Object Segmentation Approaches
-    # Thresholding method
-    # 2_1 Thresholded image from gray
-    # image converted from RGB to gray.
-    gray_img = pcv.rgb2gray(rgb_img=np_img)
-    # Create binary image from a gray image based on threshold values,
-    threshold_light = pcv.threshold.binary(gray_img=gray_img,
-                                           threshold=115,
-                                           object_type='dark')
-    # delete small parts of pixels
-    bsa_fill1 = pcv.fill(bin_img=threshold_light,
-                         size=25)
-
-    # bsa_fill1 = pcv.dilate(gray_img=bsa_fill1, ksize=1.5, i = 2)
-
-    # closing small pixels
-    filled_mask1 = pcv.closing(gray_img=bsa_fill1)
-    # pcv.print_image(filled_mask1, "1_binary.png")
-
-    # Noise Reduction
-    # 2 Gaussian blur
-    # Apply gaussian blur to a binary image
-    gaussian_img = pcv.gaussian_blur(img=filled_mask1,
-                                     ksize=(3, 3),
-                                     sigma_x=0,
-                                     sigma_y=None)
-    # img_flip.save(f"{img_name}_Flip{img_extension}")
-    if gaussian:
-        pcv.print_image(gaussian_img, "2_gaussian_image.png")
-
-    print("mask", type(filled_mask1))
-    # #3 Mask - Apply binary 'white' mask over an image.
-    masked_img = pcv.apply_mask(img=np_img,
-                                  mask=gaussian_img,
-                                  mask_color='white')
-    # if mask:
-    pcv.print_image(masked_img, "masked_image.png")
-    img_name = "plant"
-
-    # if roi:
-    center_x, center_y, radius = pcv_roi(np_img, bsa_fill1, img_name)
-
-    # if analyze:
-    shape_img = pcv_analyze_object(np_img, bsa_fill1, img_name)
-
-    # if pseudolandmarks:
-    top, bottom, center_v = pcv_pseudolanmarks(np_img, bsa_fill1, img_name)
-
-    # Display results
-    plt.figure(figsize=(10, 8))
-    # plt.title(figure_title, y=1.08)
-
-    plt.subplot(3, 2, 1)
-    plt.imshow(cv2.cvtColor(np_img, cv2.COLOR_BGR2RGB))
-    plt.title("1: Original")
-
-    print(type(np_img))
-    plt.subplot(3, 2, 2)
-    plt.imshow(cv2.cvtColor(gaussian_img, cv2.COLOR_BGR2RGB))
-    plt.title("2: Gaussian Blur")
-
-    plt.subplot(3, 2, 3)
-    plt.imshow(cv2.cvtColor(masked_img, cv2.COLOR_BGR2RGB))
-    plt.title("3: Analyzed Object")
-
-    fig = plt.subplot(3, 2, 4)
-    plt.imshow(cv2.cvtColor(np_img, cv2.COLOR_BGR2RGB))
-    circle = plt.Circle((center_x, center_y), radius*0.8, alpha = 1, fill = None, linewidth=5,  facecolor=None,  linestyle='-', edgecolor = "blue")
-    plt.scatter(center_x, center_y, 10, facecolors='none', edgecolors='blue')
-    fig.add_patch(circle)
-    # x = center_x, y = center_y, r = 75
-    plt.title("4: ROI objects")
-
-    plt.subplot(3, 2, 5)
-    plt.imshow(cv2.cvtColor(shape_img, cv2.COLOR_BGR2RGB))
-    plt.title("5: Analyze object")
-
-    plt.subplot(3, 2, 6)
-    plt.imshow(cv2.cvtColor(np_img, cv2.COLOR_BGR2RGB))
-    for el in top:
-        for l in el:
-            plt.scatter(el[0][0], el[0,1], s=20, c="blue")
-    for el in bottom:
-        for l in el:
-            plt.scatter(el[0][0], el[0,1], s=20, c="magenta")
-    for el in center_v:
-        for l in el:
-            plt.scatter(el[0][0], el[0,1], s=20, c="red")
-    plt.title("6: Pseudolandmarks")
-
-    # add overall title and adjust it so that it doesn't overlap with subplot titles
-    plt.suptitle(image_path)
-    # plt.subplots_adjust(top=0.85)
-
-    plt.tight_layout()
-    # display subplots
-    plt.show()
-
-    # if histogram:
-    #     pass
-
-def transform_directory(dir_src, dir_dst):
-    pass
+def transform_directory(dir_src, dir_dst, gaussian=False,
+                        mask=False, roi=False, analyze=False,
+                        pseudolandmarks=False, histogram=False):
+    for f in os.scandir(dir_src):
+        # check if it is a jpg file
+        if os.path.abspath(f).lower().endswith(".jpg"):
+            try:
+                print("image open")
+                Image.open(f)
+            except:
+                pass
+            Transform_image(f, display=False, dir_dst=dir_dst,
+                            gaussian=gaussian,
+                            mask=mask, roi=roi,
+                            analyze=analyze,
+                            pseudolandmarks=pseudolandmarks,
+                            histogram=histogram)
 
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) != 2:
-        logger.error("Usage: python Transformation.py <image_path>")
-        sys.exit(1)
-    image_path = sys.argv[1]
-    if not os.path.isfile(image_path):
-        logger.error(f"Image file not found: {image_path}")
-        sys.exit(1)
-    transform_image_1(image_path)
-    transform_image(image_path, gaussian=True, mask=True, roi=True, analyze=True, pseudolandmarks=True, histogram=True)
-    dir_src = "/Users/air/Documents/ecole/leaffliction/L__git/leaffliction_computer_vision/augmented_directory/Apple_Black_rot"
-    dir_dst="/Users/air/Documents/ecole/leaffliction/L__git/leaffliction_computer_vision/transformed_dir"
-    transform_directory(dir_src, dir_dst)
+    args = parser.parse_args()
+    print("args: ", args)
+    print()
+    if (args.img_src):
+        tr_im = Transform_image(args.img_src)
+    elif (args.src and args.dst):
+        transform_directory(args.src, args.dst, args.gaussian,
+                            args.mask, args.roi, args.analyze,
+                            args.pseudolandmarks, args.histogram)
 
-    # args = parser.parse_args()
-    # print(args)
-    # if (args.img_src):
-    #     transform_image(args.img_src) \
-    #         # if (args.mask):
-    #     #     transform_image(args.img_src) # , args.dst)
-    # if (args.src):
-    #     print("no src")
-    #     pass
-    #     # ,args.gaussian,args.mask, args.roi, args.analyze, args.pseudolandmarks, args.histogram)  # , args.dst)
-
+    else:
+        exit("Welcome to image trandformation!"
+             "Enter as argument '-h' to know how to use it")
+        # args = parser.parse_args("-help")
 # Example usage
 # display_image_transformations("images/Apple/apple_healthy/image (1).JPG")
 # colors in lab !!!!
+# only jpg files?
